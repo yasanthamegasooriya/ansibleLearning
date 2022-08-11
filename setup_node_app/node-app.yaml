@@ -1,0 +1,44 @@
+---
+- name: Install node and npm
+  hosts: nodeapp
+  become: yes #sudo su privilages
+  tasks:
+  - name: update apt repo and cache
+    apt:
+      update_cache: yes
+      force_apt_get: yes
+      cache_valid_time: 3600
+  - name: Install nodejs and npm
+    apt:
+      pkg:
+      - nodejs
+      - npm
+
+- name: Deploy nodejs app
+  hosts: nodeapp
+  #become: yes #sudo su privilages
+  tasks:
+  - name: copy tar file to hosts
+    ansible.builtin.copy: 
+      src: /Users/yasantha/Documents/myLearning/simple-nodejs-app/simple-nodejs-app-1.0.0.tgz
+      dest: /home/yasantha/simple-nodejs-app-1.0.0.tgz
+  - name: Unarchiving the tar
+    ansible.builtin.unarchive:
+      src: /home/yasantha/simple-nodejs-app-1.0.0.tgz
+      dest: /home/yasantha/
+      remote_src: yes #specify the task do on remote service
+  - name: npm Install
+    community.general.npm:
+      path: /home/yasantha/package
+  - name: npm start
+    command: npm start
+    args:
+      chdir: /home/yasantha/package
+    async: 1000
+    poll: 0
+  - name: Ensure app is running
+    shell: ps aux | grep npm
+    register: app_status
+  - name: printing var
+    debug: msg={{app_status.stdout_lines}}
+      
