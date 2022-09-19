@@ -17,14 +17,16 @@
 - name: Deploy nodejs app
   hosts: nodeapp
   #become: yes #sudo su privilages
+  vars_files:
+  - node-app-var.yaml
   tasks:
   - name: copy tar file to hosts
     ansible.builtin.copy: 
-      src: /Users/yasantha/Documents/myLearning/simple-nodejs-app/simple-nodejs-app-1.0.0.tgz
-      dest: /home/yasantha/simple-nodejs-app-1.0.0.tgz
+      src: "{{location}}/simple-nodejs-app-{{varsion}}.tgz"
+      dest: "/home/yasantha/simple-nodejs-app-{{varsion}}.tgz"
   - name: Unarchiving the tar
     ansible.builtin.unarchive:
-      src: /home/yasantha/simple-nodejs-app-1.0.0.tgz
+      src: "/home/yasantha/simple-nodejs-app-{{varsion}}.tgz"
       dest: /home/yasantha/
       remote_src: yes #specify the task do on remote service
   - name: npm Install
