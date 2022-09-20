@@ -1,0 +1,92 @@
+---
+- name: Install required packages
+  hosts: nexus
+  become: yes
+  tasks:
+  - name: update apt repo and cache
+    apt:
+      update_cache: yes
+      force_apt_get: yes
+      cache_valid_time: 3600
+  - name: install packages
+    apt:
+     pkg:
+     - openjdk-8-jre-headless
+     - net-tools
+
+- name: Download and unpack the nexus installer
+  hosts: nexus
+  become: yes
+  tasks:
+  - name: download nexus
+    ansible.builtin.get_url:
+      url: https://download.sonatype.com/nexus/3/latest-unix.tar.gz
+      dest: /opt
+    register: nexus_file
+  - name: untar nexus install
+    ansible.builtin.unarchive:
+      src: "{{nexus_file.dest}}"
+      dest: /opt/
+      remote_src: yes
+  - name: find nexus directory
+    ansible.builtin.find:
+      paths: /opt
+      patterns: "nexus-*"
+      file_type: directory
+    register: find_result
+  - name: check nexus folder stats
+    ansible.builtin.stat:
+      path: /opt/nexus
+    register: stat_result
+  - debug: msg={{stat_result}}
+  - name: rename nexus directory
+    shell: mv {{find_result.files[0].path}} /opt/nexus
+    when: not stat_result.stat.exists
+
+- name: Create nexus user and change ownership
+  hosts: nexus
+  become: yes
+  tasks:
+  # - name: create nexus group
+  #   ansible.builtin.group:
+  #     name: nexus
+  #     state: present
+  - name: create nexus user
+    ansible.builtin.user:
+      name: nexus
+      comment: nexus user
+  - name: change ownsership
+    ansible.builtin.file:
+      path: /opt/nexus
+      owner: nexus
+      group: nexus
+      state: directory
+      recurse: true
+  - name: change ownsership
+    ansible.builtin.file:
+      path: /opt/sonatype-work
+      owner: nexus
+      group: nexus
+      state: directory
+      recurse: true
+  - name: change ownsership
+    ansible.builtin.file:
+      path: /opt/containerd
+      owner: nexus
+      group: nexus
+      state: directory
+      recurse: true
+
+
+- name: start nexus with nexus user
+  hosts: nexus
+  become: yes
+  tasks:
+  - name: change start user on file_type
+    ansible.builtin.lineinfile:
+      path: /opt/nexus/bin/nexus.rc
+      regexp: '^#run_as_user=""'
+      line: run_as_user="nexus"
+  - name: start nexus server
+    command: /opt/nexus/bin/nexus start
+
